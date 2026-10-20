@@ -1,0 +1,75 @@
+openapi: 3.0.0
+info:
+  title: Marketplace API
+  version: 1.0.0
+  description: RESTful API for managing marketplace items and categories
+paths:
+  /api/categories:
+    get:
+      summary: List all categories
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Create a category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                image:
+                  type: string
+      responses:
+        '201':
+          description: Created
+
+  /api/items:
+    get:
+      summary: List items with optional name/category filters
+      parameters:
+        - in: query
+          name: name
+          schema:
+            type: string
+          description: Filter items by name (case-insensitive)
+        - in: query
+          name: categoryId
+          schema:
+            type: string
+          description: Filter items by category ID
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Create an item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - unit
+                - price
+                - categoryId
+              properties:
+                name:
+                  type: string
+                unit:
+                  type: string
+                price:
+                  type: number
+                image:
+                  type: string
+                categoryId:
+                  type: string
+      responses:
+        '201':
+          description: Created
