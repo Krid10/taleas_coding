@@ -15,7 +15,7 @@ export default function App() {
   const [singleItemResult, setSingleItemResult] = useState(null);
   const [idSearchError, setIdSearchError] = useState('');
 
-  // Form states
+  // Creation form states
   const [catName, setCatName] = useState('');
   const [catImage, setCatImage] = useState('');
   const [itemName, setItemName] = useState('');
@@ -23,6 +23,10 @@ export default function App() {
   const [itemPrice, setItemPrice] = useState('');
   const [itemImage, setItemImage] = useState('');
   const [itemCategory, setItemCategory] = useState('');
+
+  // Edit states
+  const [editingItem, setEditingItem] = useState(null);
+  const [editingCategory, setEditingCategory] = useState(null);
 
   // Fetch Categories
   const fetchCategories = useCallback(async () => {
@@ -83,7 +87,7 @@ export default function App() {
     };
   }, [searchName, selectedCategory]);
 
-  // Handlers
+  // Create Handlers
   const handleAddCategory = async (e) => {
     e.preventDefault();
     if (!catName.trim()) return;
@@ -117,6 +121,70 @@ export default function App() {
     }
   };
 
+  // Update Category Handler
+  const handleUpdateCategory = async (e) => {
+    e.preventDefault();
+    if (!editingCategory?.name.trim()) return;
+    try {
+      await axios.put(`${API_BASE}/categories/${editingCategory._id}`, {
+        name: editingCategory.name,
+        image: editingCategory.image,
+      });
+      setEditingCategory(null);
+      fetchCategories();
+      fetchItems(); // category names inside items may update
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to update category');
+    }
+  };
+
+  // Delete Category Handler
+  const handleDeleteCategory = async (id) => {
+    if (!window.confirm('Delete this category? Associated items may also be removed or uncategorized.')) return;
+    try {
+      await axios.delete(`${API_BASE}/categories/${id}`);
+      fetchCategories();
+      fetchItems();
+    } catch (err) {
+      console.error('Failed to delete category:', err);
+      alert('Failed to delete category');
+    }
+  };
+
+  // Update Item Handler
+  const handleUpdateItem = async (e) => {
+    e.preventDefault();
+    if (!editingItem?.name.trim() || !editingItem?.price || !editingItem?.categoryId) return;
+    try {
+      await axios.put(`${API_BASE}/items/${editingItem._id}`, {
+        name: editingItem.name,
+        unit: editingItem.unit,
+        price: Number(editingItem.price),
+        image: editingItem.image,
+        categoryId: editingItem.categoryId,
+      });
+      setEditingItem(null);
+      fetchItems();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to update item');
+    }
+  };
+
+  // Delete Item Handler
+  const handleDeleteItem = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this item?')) return;
+    try {
+      await axios.delete(`${API_BASE}/items/${id}`);
+      if (singleItemResult && singleItemResult._id === id) {
+        setSingleItemResult(null);
+      }
+      fetchItems();
+    } catch (err) {
+      console.error('Failed to delete item:', err);
+      alert('Failed to delete item');
+    }
+  };
+
   // GET Item by ID
   const handleFindById = async (e) => {
     e.preventDefault();
@@ -133,27 +201,6 @@ export default function App() {
     }
   };
 
-  const handleClearIdSearch = () => {
-    setSearchId('');
-    setSingleItemResult(null);
-    setIdSearchError('');
-  };
-
-  // DELETE Item command
-  const handleDeleteItem = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this item?')) return;
-    try {
-      await axios.delete(`${API_BASE}/items/${id}`);
-      if (singleItemResult && singleItemResult._id === id) {
-        setSingleItemResult(null);
-      }
-      fetchItems();
-    } catch (err) {
-      console.error('Failed to delete item:', err);
-      alert('Failed to delete item');
-    }
-  };
-
   return (
       <div style={{ maxWidth: '1000px', margin: '30px auto', fontFamily: 'system-ui, sans-serif', padding: '0 20px' }}>
         {/* Header */}
@@ -164,9 +211,8 @@ export default function App() {
           </p>
         </header>
 
-        {/* Forms Section */}
+        {/* Creation Forms */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
-          {/* Create Category */}
           <form onSubmit={handleAddCategory} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px', background: '#fafafa' }}>
             <h3 style={{ margin: '0 0 12px 0', fontSize: '18px' }}>Create Category</h3>
             <input
@@ -188,7 +234,6 @@ export default function App() {
             </button>
           </form>
 
-          {/* Create Item */}
           <form onSubmit={handleAddItem} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px', background: '#fafafa' }}>
             <h3 style={{ margin: '0 0 12px 0', fontSize: '18px' }}>Create Item</h3>
             <input
@@ -237,7 +282,7 @@ export default function App() {
           </form>
         </div>
 
-        {/* Navigation Tab Bar (Items Bar vs Categories Bar) */}
+        {/* Tabs */}
         <div style={{ display: 'flex', gap: '8px', borderBottom: '2px solid #e5e7eb', marginBottom: '20px' }}>
           <button
               type="button"
@@ -273,10 +318,10 @@ export default function App() {
           </button>
         </div>
 
-        {/* Tab 1: ITEMS VIEW */}
+        {/* ITEMS TAB */}
         {activeTab === 'items' && (
             <div>
-              {/* Search by ID Section (GET /items/:id) */}
+              {/* Lookup Item by ID */}
               <div style={{ background: '#f3f4f6', padding: '16px', borderRadius: '8px', marginBottom: '20px' }}>
                 <h4 style={{ margin: '0 0 10px 0', fontSize: '15px' }}>Lookup Item by ID (GET /api/items/:id)</h4>
                 <form onSubmit={handleFindById} style={{ display: 'flex', gap: '10px' }}>
@@ -291,31 +336,28 @@ export default function App() {
                     Fetch by ID
                   </button>
                   {singleItemResult && (
-                      <button type="button" onClick={handleClearIdSearch} style={{ padding: '8px 12px', background: '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                      <button type="button" onClick={() => { setSearchId(''); setSingleItemResult(null); setIdSearchError(''); }} style={{ padding: '8px 12px', background: '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
                         Clear
                       </button>
                   )}
                 </form>
                 {idSearchError && <p style={{ color: '#dc2626', margin: '8px 0 0 0', fontSize: '13px' }}>{idSearchError}</p>}
-
-                {/* Single Item ID Result Card */}
                 {singleItemResult && (
                     <div style={{ marginTop: '14px', padding: '12px', background: '#fff', borderRadius: '6px', border: '1px solid #d1d5db' }}>
-                      <span style={{ fontSize: '12px', color: '#059669', fontWeight: 'bold' }}>✓ Found Item Result:</span>
-                      <p style={{ margin: '4px 0', fontWeight: 'bold' }}>{singleItemResult.name} — ${singleItemResult.price} / {singleItemResult.unit}</p>
-                      <p style={{ margin: '2px 0', fontSize: '12px', color: '#6b7280' }}>ID: {singleItemResult._id} | Category: {singleItemResult.categoryId?.name || singleItemResult.categoryId}</p>
+                      <span style={{ fontSize: '12px', color: '#059669', fontWeight: 'bold' }}>✓ Found: {singleItemResult.name}</span>
+                      <p style={{ margin: '4px 0' }}>Price: ${singleItemResult.price} / {singleItemResult.unit}</p>
                       <button
                           type="button"
                           onClick={() => handleDeleteItem(singleItemResult._id)}
-                          style={{ marginTop: '8px', padding: '4px 10px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+                          style={{ padding: '4px 8px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
                       >
-                        Delete Item Command
+                        Delete Item
                       </button>
                     </div>
                 )}
               </div>
 
-              {/* Filter Bar (Search by name & category dropdown) */}
+              {/* Filter Items */}
               <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', background: '#f9fafb', padding: '12px', borderRadius: '8px' }}>
                 <input
                     type="text"
@@ -357,14 +399,27 @@ export default function App() {
                       <p style={{ margin: '4px 0 12px 0', fontSize: '17px', fontWeight: 'bold' }}>
                         ${item.price} <span style={{ fontSize: '13px', fontWeight: 'normal', color: '#6b7280' }}>/ {item.unit}</span>
                       </p>
-                      {/* Delete Item Command Button */}
-                      <button
-                          type="button"
-                          onClick={() => handleDeleteItem(item._id)}
-                          style={{ marginTop: 'auto', padding: '6px', background: '#fee2e2', color: '#dc2626', border: '1px solid #f87171', borderRadius: '4px', cursor: 'pointer', fontWeight: '500' }}
-                      >
-                        Delete Item
-                      </button>
+
+                      {/* Edit & Delete Action Buttons */}
+                      <div style={{ marginTop: 'auto', display: 'flex', gap: '8px' }}>
+                        <button
+                            type="button"
+                            onClick={() => setEditingItem({
+                              ...item,
+                              categoryId: item.categoryId?._id || item.categoryId,
+                            })}
+                            style={{ flex: 1, padding: '6px', background: '#e0f2fe', color: '#0369a1', border: '1px solid #7dd3fc', borderRadius: '4px', cursor: 'pointer', fontWeight: '500' }}
+                        >
+                          Update
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleDeleteItem(item._id)}
+                            style={{ flex: 1, padding: '6px', background: '#fee2e2', color: '#dc2626', border: '1px solid #f87171', borderRadius: '4px', cursor: 'pointer', fontWeight: '500' }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                 ))}
               </div>
@@ -372,13 +427,13 @@ export default function App() {
             </div>
         )}
 
-        {/* Tab 2: CATEGORIES VIEW */}
+        {/* CATEGORIES TAB */}
         {activeTab === 'categories' && (
             <div>
-              <h3 style={{ margin: '0 0 16px 0' }}>All Categories List</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
+              <h3 style={{ margin: '0 0 16px 0' }}>All Categories</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
                 {categories.map((cat) => (
-                    <div key={cat._id} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '14px', background: '#fff' }}>
+                    <div key={cat._id} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '14px', background: '#fff', display: 'flex', flexDirection: 'column' }}>
                       {cat.image && (
                           <img
                               src={cat.image}
@@ -387,13 +442,103 @@ export default function App() {
                           />
                       )}
                       <h4 style={{ margin: '0 0 4px 0' }}>{cat.name}</h4>
-                      <p style={{ margin: 0, fontSize: '11px', color: '#6b7280', fontFamily: 'monospace' }}>ID: {cat._id}</p>
+                      <p style={{ margin: '0 0 12px 0', fontSize: '11px', color: '#6b7280', fontFamily: 'monospace' }}>ID: {cat._id}</p>
+
+                      {/* Edit & Delete Category Action Buttons */}
+                      <div style={{ marginTop: 'auto', display: 'flex', gap: '8px' }}>
+                        <button
+                            type="button"
+                            onClick={() => setEditingCategory(cat)}
+                            style={{ flex: 1, padding: '6px', background: '#e0f2fe', color: '#0369a1', border: '1px solid #7dd3fc', borderRadius: '4px', cursor: 'pointer', fontWeight: '500' }}
+                        >
+                          Update
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleDeleteCategory(cat._id)}
+                            style={{ flex: 1, padding: '6px', background: '#fee2e2', color: '#dc2626', border: '1px solid #f87171', borderRadius: '4px', cursor: 'pointer', fontWeight: '500' }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                 ))}
               </div>
               {categories.length === 0 && <p style={{ color: '#9ca3af' }}>No categories created yet.</p>}
             </div>
         )}
-      </div>
-  );
-}
+
+        {/* UPDATE ITEM MODAL */}
+        {editingItem && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+              <form onSubmit={handleUpdateItem} style={{ background: '#fff', padding: '24px', borderRadius: '8px', width: '360px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <h3 style={{ margin: 0 }}>Update Item</h3>
+                <input
+                    type="text"
+                    placeholder="Name"
+                    value={editingItem.name}
+                    onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
+                    style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                />
+                <input
+                    type="text"
+                    placeholder="Unit"
+                    value={editingItem.unit}
+                    onChange={(e) => setEditingItem({ ...editingItem, unit: e.target.value })}
+                    style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                />
+                <input
+                    type="number"
+                    placeholder="Price"
+                    value={editingItem.price}
+                    onChange={(e) => setEditingItem({ ...editingItem, price: e.target.value })}
+                    style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                />
+                <input
+                    type="text"
+                    placeholder="Image URL"
+                    value={editingItem.image || ''}
+                    onChange={(e) => setEditingItem({ ...editingItem, image: e.target.value })}
+                    style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                />
+                <select
+                    value={editingItem.categoryId}
+                    onChange={(e) => setEditingItem({ ...editingItem, categoryId: e.target.value })}
+                    style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                >
+                  {categories.map((c) => (
+                      <option key={c._id} value={c._id}>{c.name}</option>
+                  ))}
+                </select>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                  <button type="submit" style={{ flex: 1, padding: '8px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                    Save
+                  </button>
+                  <button type="button" onClick={() => setEditingItem(null)} style={{ flex: 1, padding: '8px', background: '#9ca3af', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+        )}
+
+        {/* UPDATE CATEGORY MODAL */}
+        {editingCategory && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+              <form onSubmit={handleUpdateCategory} style={{ background: '#fff', padding: '24px', borderRadius: '8px', width: '360px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <h3 style={{ margin: 0 }}>Update Category</h3>
+                <input
+                    type="text"
+                    placeholder="Category Name"
+                    value={editingCategory.name}
+                    onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
+                    style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                />
+                <input
+                    type="text"
+                    placeholder="Image URL"
+                    value={editingCategory.image || ''}
+                    onChange={(e) => setEditingCategory({ ...editingCategory, image: e.target.value })}
+                    style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                />
+                <div style={{ display: 'flex', gap: '8px', marginTop: '1
