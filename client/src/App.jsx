@@ -28,6 +28,23 @@ export default function App() {
   const [editingItem, setEditingItem] = useState(null);
   const [editingCategory, setEditingCategory] = useState(null);
 
+  // Helper to convert an uploaded device image file to Base64
+  const handleFileChange = (e, setImageCallback) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image file is too large! Please choose an image smaller than 5MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImageCallback(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const fetchCategories = useCallback(async () => {
     try {
       const res = await axios.get(`${API_BASE}/categories`);
@@ -292,16 +309,31 @@ export default function App() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Upload Image from Device */}
                     <div>
-                      <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Image URL (Optional)</label>
-                      <input
-                          type="text"
-                          placeholder="https://images.com/example.jpg"
-                          value={itemImage}
-                          onChange={(e) => setItemImage(e.target.value)}
-                          className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
+                      <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Upload Image</label>
+                      <div className="flex items-center gap-3">
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleFileChange(e, setItemImage)}
+                            className="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                        />
+                        {itemImage && (
+                            <div className="relative group shrink-0">
+                              <img src={itemImage} alt="Preview" className="w-10 h-10 object-cover rounded-lg border border-slate-200" />
+                              <button
+                                  type="button"
+                                  onClick={() => setItemImage('')}
+                                  className="absolute -top-1 -right-1 bg-rose-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px]"
+                              >
+                                ×
+                              </button>
+                            </div>
+                        )}
+                      </div>
                     </div>
+
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Category *</label>
                       <select
@@ -476,15 +508,29 @@ export default function App() {
                           className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
+                    {/* Upload Image from Device */}
                     <div>
-                      <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Image URL (Optional)</label>
-                      <input
-                          type="text"
-                          placeholder="https://images.com/category.jpg"
-                          value={catImage}
-                          onChange={(e) => setCatImage(e.target.value)}
-                          className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
+                      <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Upload Image</label>
+                      <div className="flex items-center gap-3">
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleFileChange(e, setCatImage)}
+                            className="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                        />
+                        {catImage && (
+                            <div className="relative group shrink-0">
+                              <img src={catImage} alt="Preview" className="w-10 h-10 object-cover rounded-lg border border-slate-200" />
+                              <button
+                                  type="button"
+                                  onClick={() => setCatImage('')}
+                                  className="absolute -top-1 -right-1 bg-rose-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px]"
+                              >
+                                ×
+                              </button>
+                            </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <button
@@ -573,14 +619,20 @@ export default function App() {
                       />
                     </div>
                   </div>
+                  {/* Update Device Image */}
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Image URL</label>
-                    <input
-                        type="text"
-                        value={editingItem.image || ''}
-                        onChange={(e) => setEditingItem({ ...editingItem, image: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                    />
+                    <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Update Image</label>
+                    <div className="flex items-center gap-3">
+                      <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleFileChange(e, (dataUrl) => setEditingItem({ ...editingItem, image: dataUrl }))}
+                          className="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                      />
+                      {editingItem.image && (
+                          <img src={editingItem.image} alt="Item Preview" className="w-10 h-10 object-cover rounded-lg border border-slate-200 shrink-0" />
+                      )}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Category</label>
@@ -629,14 +681,20 @@ export default function App() {
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
                     />
                   </div>
+                  {/* Update Device Image */}
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Image URL</label>
-                    <input
-                        type="text"
-                        value={editingCategory.image || ''}
-                        onChange={(e) => setEditingCategory({ ...editingCategory, image: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                    />
+                    <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Update Image</label>
+                    <div className="flex items-center gap-3">
+                      <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleFileChange(e, (dataUrl) => setEditingCategory({ ...editingCategory, image: dataUrl }))}
+                          className="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                      />
+                      {editingCategory.image && (
+                          <img src={editingCategory.image} alt="Category Preview" className="w-10 h-10 object-cover rounded-lg border border-slate-200 shrink-0" />
+                      )}
+                    </div>
                   </div>
                   <div className="flex gap-2 pt-4">
                     <button
